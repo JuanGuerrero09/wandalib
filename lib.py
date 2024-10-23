@@ -5,9 +5,23 @@ from enum import Enum
 
 class AllowedProperties(Enum):
     ROUGHNESS = "Wall roughness"
+    FLOW = "Initial delivery rate"
     
     
-def get_pressure_series(wanda_model, pipes):
+def assing_value(wanda_model, component, parameter, value):
+    component = wanda_model.get_component(component)
+    flow_rate = component.get_property(parameter)
+    flow_rate.set_scalar(value/3600)
+        
+def get_node_pressure_steady(wanda_model, node):   
+    node = wanda_model.get_node(node)
+    wanda_model.read_node_output(node)
+    node_pressure = node.get_property("Pressure").get_scalar_float() / 100000
+    return node_pressure
+
+    
+    
+def get_pressure_series(wanda_model, pipes, downsampling_factor=1):
     len_steps = []
     pressure_steady_values = []
     pressure_max_values = []
@@ -38,6 +52,11 @@ def get_pressure_series(wanda_model, pipes):
     min_pressure = pd.Series(pressure_min_values, index=len_steps)
     max_pressure = pd.Series(pressure_max_values, index=len_steps)
     
+    if downsampling_factor != 1:
+        steady = steady[::downsampling_factor]
+        min_pressure = min_pressure[::downsampling_factor]
+        max_pressure = max_pressure[::downsampling_factor]
+    
     return steady, min_pressure, max_pressure
 
 def get_surge_vessel_serie(wanda_model, sv):
@@ -46,10 +65,11 @@ def get_surge_vessel_serie(wanda_model, sv):
     liquid_vol = np.array(component.get_property("Liquid volume").get_series())
     liquid_vol_serie = pd.Series(liquid_vol, index=time_steps)
     print("The minimum volume for the surge vessel ", component.get_name(), "is: ", min(liquid_vol_serie))
+    print("The maximum volume for the surge vessel ", component.get_name(), "is: ", max(liquid_vol_serie))
     return liquid_vol_serie
 
     
-def get_pipe_pressure_graphs(wanda_model, pipes):
+def get_pipe_pressure_graphs(wanda_model, pipes, downsampling_factor = 1):
 
     len_steps = []
     pressure_steady_values = []
@@ -77,17 +97,18 @@ def get_pipe_pressure_graphs(wanda_model, pipes):
     pressure_min_values = np.concatenate(pressure_min_values)
     len_steps = np.concatenate(len_steps)
     
+    if downsampling_factor != 1:
+        pressure_steady_values = pressure_steady_values[::downsampling_factor]
+        pressure_max_values = pressure_max_values[::downsampling_factor]
+        pressure_min_values = pressure_min_values[::downsampling_factor]
+        len_steps = len_steps[::downsampling_factor]
+    
     # Create pandas Series
     df = pd.Series(pressure_steady_values, index=len_steps)
     min_pressure = pd.Series(pressure_min_values, index=len_steps)
     max_pressure = pd.Series(pressure_max_values, index=len_steps)
     
-    """
-    To get an excel with all the time and pressures if is needed:
-    df = pd.DataFrame(index=len_steps, columns=wanda_model.get_time_steps())
-    for i in range(len(series)):
-        df.iloc[i] = series[i] / 100000
-    """
+
     fig, bx = plt.subplots()
     # print(df.keys()) 
     # print(df.columns)
@@ -104,8 +125,61 @@ def get_pipe_pressure_graphs(wanda_model, pipes):
     plt.legend()
     plt.show()
     
+def get_pipe_head_steady(wanda_model, pipes, downsampling_factor = 1):
+    profile_x_values = []
+    profile_y_values = []
+    len_steps = []
+    head_steady_values = []
+
+
+    for pipe in pipes:
+        component = wanda_model.get_component(pipe)
+        profile_x = component.get_property("Profile").get_table().get_float_column("X-distance")
+        profile_y = component.get_property("Profile").get_table().get_float_column("Height")
+        
+        profile_x_values.extend(profile_x)
+        profile_y_values.extend(profile_y)
+        
+        pressure_pipe = component.get_property("Head")
+        series_pipe = np.array(pressure_pipe.get_series_pipe())
+        
+        steady = series_pipe[:, 0]
+        head_steady_values.append(steady)
+        
+        len_steps.append(np.linspace(profile_x[0], profile_x[-1], len(series_pipe)))
+        
+        # print("For pipeline ", component.get_name(), "the minimum head is: ", min(pressure_pipe.get_extr_min_pipe()))
+        # print("For pipeline ", component.get_name(), "the maximum head is: ", min(pressure_pipe.get_extr_max_pipe()))
+
+    # Convert lists to numpy arrays
+    head_steady_values = np.concatenate(head_steady_values)
+    len_steps = np.concatenate(len_steps)
     
-def get_pipe_head_graphs(wanda_model, pipes):
+    if downsampling_factor != 1:
+        head_steady_values = np.concatenate(head_steady_values)
+        len_steps = np.concatenate(len_steps)
+    
+    # Create pandas Series
+    df = pd.Series(head_steady_values, index=len_steps)
+    profile = pd.Series(profile_y_values, index=profile_x_values)
+    fig, bx = plt.subplots()
+    bx.plot(profile, label="Profile", color="green")
+    # print(df.keys()) 
+    # print(df.columns)
+    bx.plot(df, label= "Steady State head", color="orange")
+    bx.set(xlim=(0, profile_x[-1]))
+    # Add vertical lines
+    plt.title("Pipeline Head")
+    plt.xlabel("Distance [m]")
+    plt.ylabel("Head [m]")
+    plt.grid()
+    plt.legend()
+    # plt.show() 
+    
+    return [fig, bx]
+    
+    
+def get_pipe_head_graphs(wanda_model, pipes, downsampling_factor = 1):
     profile_x_values = []
     profile_y_values = []
     len_steps = []
@@ -140,6 +214,12 @@ def get_pipe_head_graphs(wanda_model, pipes):
     head_min_values = np.concatenate(head_min_values)
     len_steps = np.concatenate(len_steps)
     
+    if downsampling_factor != 1:
+        head_steady_values = head_steady_values[::downsampling_factor]
+        head_max_values = head_max_values[::downsampling_factor]
+        head_min_values = head_min_values[::downsampling_factor]
+        len_steps = len_steps[::downsampling_factor]
+    
     # Create pandas Series
     df = pd.Series(head_steady_values, index=len_steps)
     profile = pd.Series(profile_y_values, index=profile_x_values)
@@ -163,22 +243,42 @@ def get_pipe_head_graphs(wanda_model, pipes):
     
 def get_surge_vessels_info(wanda_model, surge_vessels):
     fig_num = 0
-    fig, axs = plt.subplots(1, len(surge_vessels))
+    num_plots = len(surge_vessels)
+    # Asegurar que tengamos una cuadrícula de al menos 2x2
+    num_rows = 2
+    num_cols = 2 if num_plots > 1 else 1
+
+    fig, axs = plt.subplots(num_rows, num_cols, figsize=(15, 10))
     time_steps = wanda_model.get_time_steps()
+    
+    # Aplanar el arreglo de ejes si es necesario
+    if num_plots == 1:
+        axs = [axs]
+    else:
+        axs = axs.flatten()
+
     for sv in surge_vessels:
         component = wanda_model.get_component(sv)
         liquid_vol = np.array(component.get_property("Liquid volume").get_series())
         liquid_vol_serie = pd.Series(liquid_vol, index=time_steps)
         print("The minimum volume for the surge vessel ", component.get_name(), "is: ", min(liquid_vol_serie))
+        print("The minimum volume for the surge vessel ", component.get_name(), "is: ", max(liquid_vol_serie))
         axs[fig_num].plot(liquid_vol_serie, label=f"Liquid Volume of SV")
         axs[fig_num].set_title(sv)
         axs[fig_num].grid()
         axs[fig_num].legend()
         axs[fig_num].set_xlabel("Time [s]")
         axs[fig_num].set_ylabel("Liquid Volume [m3]")
+        axs[fig_num].set(xlim=(0, time_steps[-1]))
         fig_num += 1
-    fig.set_figwidth(15)
+
+    # Si hay menos subplots que ejes disponibles, eliminar los vacíos
+    if fig_num < len(axs):
+        for ax in axs[fig_num:]:
+            fig.delaxes(ax)
+
     fig.tight_layout()
+    plt.show()
     
 def get_pipe_pressure_graphs_w_minrough(wanda_model, pipes):
 
@@ -311,10 +411,10 @@ def get_max_min_prv_pipes(wanda_model, elements):
         bx.legend()
         bx.set_xlabel("Time [s]")
         bx.set_ylabel("Discharge [m3/hr]")
-        bx.set(xlim=(0, 800))
+        bx.set(xlim=(0, time_steps[-1]))
         
         
-def get_info_nodes(wanda_model, nodes):
+def get_info_nodes(wanda_model, nodes, title=False):
     fig, bx = plt.subplots()
     time_steps = wanda_model.get_time_steps()
     for el in nodes:
@@ -325,13 +425,24 @@ def get_info_nodes(wanda_model, nodes):
         print("The minimum pressure is: ", min(pressure))
         print("The maximum pressure is: ", max(pressure))
         bx.plot(P1, label="Pressure in Node")
-        bx.set_title(el)
+        if title != False and isinstance(title, str) :
+            bx.set_title(title)
+        else:
+            bx.set_title(el)
         bx.grid()
         bx.legend()
         bx.set_xlabel("Time [s]")
         bx.set_ylabel("Pressure [barg]")
-
-
+        bx.set_xlim(left=0)
+        
+def get_node_pressure_series(wanda_model, node):    
+    time_steps = wanda_model.get_time_steps()
+    component = wanda_model.get_node(node)
+    pressure = np.array(component.get_property("Pressure").get_series()) / 100000
+    pressure_serie = pd.Series(pressure, index=time_steps)
+    print("The minimum pressure for node ", component.get_name(), "is: ", min(pressure_serie))
+    print("The maximum pressure for node ", component.get_name(), "is: ", max(pressure_serie))
+    return pressure_serie
         
     
 
@@ -370,9 +481,71 @@ def get_pressure_valves(wanda_model, valves):
         bx.legend()
         bx.set_xlabel("Time [s]")
         bx.set_ylabel("Discharge [m3/hr]")
-        bx.set(xlim=(0, 800))
+        bx.set(xlim=(0, time_steps[-1]))
+def get_minimum_head(wanda_model, head_node, h1, h2, control_node, minimum_pressure):
     
-    
+    maxiter = h1  # Initial guess for head (maximum)
+    miniter = h2 # Initial guess for head (minimum)
+
+    cached_results = {}  # Store results of previous function calls
+
+    def get_pressure_from_head(n):
+        # Check if the result for n is already cached
+        if n in cached_results:
+            return cached_results[n], n
+
+        component = wanda_model.get_component(f"BOUNDH {head_node}")
+        head =  component.get_property("Head at t = 0 [s]")
+        head.set_scalar(n)
+        wanda_model.run_steady()
+        node = wanda_model.get_node(f"H-node {control_node}")
+        NODE_PRESSURE = node.get_property("Pressure").get_scalar_float() / 100000
+
+        # Cache the result for future use
+        cached_results[n] = NODE_PRESSURE
+        print("The return is: ", NODE_PRESSURE, n)
+        # print("With head:", head.get_scalar_float(), "the pressure is:", NODE_PRESSURE, "and the difference for min pressure:", NODE_PRESSURE - minimum_pressure)
+        return NODE_PRESSURE, n
+
+    tolerance = 0.001  # Tolerance for the root
+
+    while True:
+        press_headmax, headmax = get_pressure_from_head(maxiter)
+        press_headmin, headmin = get_pressure_from_head(miniter)
+
+        # Check if the function value at the maximum is close to the target
+        if press_headmax > 0 and abs(press_headmax - minimum_pressure) < tolerance:
+            node_pressure = press_headmax
+            head_result = headmax
+            break
+
+        # Check if the function value at the minimum is close to the target
+        if press_headmin > 0 and abs(press_headmin - minimum_pressure) < tolerance:
+            node_pressure = press_headmin
+            head_result = headmin
+            break
+
+        # Calculate the midpoint and its corresponding function value
+        mean = (maxiter + miniter) / 2
+        press_mean, headmean = get_pressure_from_head(mean)
+
+        # Adjust the bounds based on the function value at the midpoint
+        if press_mean < minimum_pressure:
+            miniter = mean
+        else:
+            maxiter = mean
+        print("maxiter", maxiter, "miniter", miniter)
+        # Check if the difference between maxiter and miniter is within tolerance
+        if maxiter - miniter < tolerance:
+            node_pressure = press_mean
+            head_result = headmean
+            break
+        
+    print("Result for head = ", head_result, "Pressure in Bu Hasa: ", node_pressure)
+
+# Ejemplo de uso
+# get_minimum_head(wanda_model, "B3", 500, 50, "C", 20.1)
+
     
 def change_parameter(wanda_model, elements, parameter: AllowedProperties, value, is_unsteady = False):
     """Docstring
