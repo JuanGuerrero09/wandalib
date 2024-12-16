@@ -2,11 +2,128 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from enum import Enum
+import shutil
+from dataclasses import dataclass
+import pywanda
+import os
+
+# ! DONT TOUCH
+# cwd =  r'C:\Users\juan.guerrero\Downloads\wanda\Current Model\MODEL 22_02_2024\Transient\wandalib'
+# wanda_bin = r'C:\Program Files (x86)\Deltares\Wanda 4.6\Bin\\'
+# wanda_name = r'WANDA_MODEL.wdi'
+# wanda_file = os.path.join(cwd, wanda_name)
 
 class AllowedProperties(Enum):
     ROUGHNESS = "Wall roughness"
     FLOW = "Initial delivery rate"
+
+@dataclass
+class Scenario:
+    scenario_name: str
+    parameters: dict
     
+def create_dict_from_list(items):
+    result_dict = {}
+    for item in items:
+        key, value = item.split(' ', 1)
+        if key in result_dict:
+            result_dict[key].append(value)
+        else:
+            result_dict[key] = [value]
+    return result_dict
+
+    
+def create_wanda_model(wanda_file: str, wanda_bin: str):
+    wanda_model = pywanda.WandaModel(wanda_file, wanda_bin)
+    wanda_name = os.path.splitext(os.path.basename(wanda_file))[0]
+    return wanda_model, wanda_name
+    
+
+def get_all_elements(wanda_model: pywanda.WandaModel):
+    element_list = wanda_model.get_all_components_str()
+    element_dict = create_dict_from_list(element_list)
+    return element_dict
+
+
+def check_if_element_exist(component: str, all_elements: list):
+    splited_str = component.split()
+    component_type = splited_str[0]
+    component_name = ' '.join(splited_str[1:])
+    print(component_type)
+    print(component_name)
+    if component_type in all_elements and component_name in all_elements[component_type]:
+        return True
+    else:
+        return False
+    
+def create_scenarios(wanda_file: str, scenarios: list[Scenario], wanda_bin: str, isUnsteady: bool = False):
+    results_dir = "transient_results"
+    # Create the directory
+    try:
+        os.mkdir(results_dir)
+        print(f"Directory '{results_dir}' created successfully.")
+    except FileExistsError:
+        print(f"Directory '{results_dir}' already exists.")
+    except PermissionError:
+        print(f"Permission denied: Unable to create '{results_dir}'.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        
+    cwd = os.path.dirname(wanda_file)
+    mother_case_skeleton = os.path.splitext(os.path.basename(wanda_file))[0] + ".wdx"
+    for scenario in scenarios:
+        scenario_wdi = scenario.scenario_name + ".wdi"
+        scenario_wdx = scenario.scenario_name + ".wdx"
+        scenario_path = os.path.join(cwd, results_dir, scenario_wdi)
+        scenario_skeleton_path = os.path.join(cwd, results_dir, scenario_wdx)
+        shutil.copy(wanda_file, scenario_path)
+        shutil.copy(mother_case_skeleton, scenario_skeleton_path)
+        new_wanda_model = pywanda.WandaModel(scenario_path, wanda_bin)
+        for parameter in scenario.parameters:
+            # TODO parameterType = parameter.split()[0]
+            # if parameterType == "Signal":
+            #     signal = new_wanda_model.get_signal_line(parameter)
+            if parameter == "GLOBAL PROPERTY":
+                for key, value in scenario.parameters[parameter].items():
+                    property = new_wanda_model.get_property(key)
+                    property.set_scalar(value)
+            elif parameter == "SIGNAL DISUSE":
+                for signal in scenario.parameters[parameter]:
+                    signal_node = new_wanda_model.get_signal_line(f"Signal {signal}")
+                    signal_node.set_disused(True)
+            else:
+                for key, value in scenario.parameters[parameter].items():
+                    # print(get_all_elements(new_wanda_model))
+                    component = new_wanda_model.get_component(parameter)
+                    property = component.get_property(key)
+                    if key == "Action table":
+                        table = property.get_table()
+                        table.set_float_data(value)
+                        continue
+                    property.set_scalar(value)
+        print(f"Scenario %s created in path %s" % (scenario.scenario_name, cwd))        
+        print("Running scenario...")
+        if isUnsteady == True:
+            new_wanda_model.run_unsteady()
+        else:        
+            new_wanda_model.run_steady()
+        print("Scenario ran")        
+        new_wanda_model.close()
+        
+    
+# HACK .get_all_properties() for a component and .get_all_components() for a WandaModel
+# print(get_all_elements(wanda_model))
+# print(wanda_name)
+# print(wanda_model)
+# check_if_element_exist("VALVE BA 3", get_all_elements(wanda_model))
+# check_if_element_exist("VALVE BA 87", get_all_elements(wanda_model))
+
+def assign_closing_time(closing_time: int, offset_time: int = 10):
+    time = [0, offset_time, closing_time + offset_time]
+    position = [1, 1, 0]
+    return [time, position]
+
+
     
 def assing_value(wanda_model, component, parameter, value):
     component = wanda_model.get_component(component)
@@ -468,6 +585,14 @@ def get_node_pressure_series(wanda_model, node):
     print("The minimum pressure for node ", component.get_name(), "is: ", min(pressure_serie))
     print("The maximum pressure for node ", component.get_name(), "is: ", max(pressure_serie))
     return pressure_serie
+
+def get_node_pressure_transient(wanda_model, node):   
+    node = wanda_model.get_node(node)
+    wanda_model.read_node_output(node) #is necessary?
+    time_steps = wanda_model.get_time_steps()
+    node_pressure = np.array(node.get_property("Pressure").get_series()) / 100000
+    node_pressure = pd.Series(node_pressure, index=time_steps)
+    return node_pressure
         
     
 
