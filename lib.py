@@ -6,10 +6,13 @@ import shutil
 from dataclasses import dataclass
 import pywanda
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 # ! DONT TOUCH
 # cwd =  r'C:\Users\juan.guerrero\Downloads\wanda\Current Model\MODEL 22_02_2024\Transient\wandalib'
-# wanda_bin = r'C:\Program Files (x86)\Deltares\Wanda 4.6\Bin\\'
+wanda_bin = os.getenv('WANDA_BIN') 
+# print(wanda_bin)
 # wanda_name = r'WANDA_MODEL.wdi'
 # wanda_file = os.path.join(cwd, wanda_name)
 
