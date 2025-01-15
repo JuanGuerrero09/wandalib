@@ -9,7 +9,7 @@ dependencies = [
     "numpy>=2.0.2",
     "pandas>=2.2.3",
     "python-dotenv>=1.0.1",
-    "pywanda>=4.6.0",
+    "pywanda==4.7.0a2",
 ]
 
 [dependency-groups]

@@ -1197,15 +1197,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pybind11"
-version = "2.13.6"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d2/c1/72b9622fcb32ff98b054f724e213c7f70d6898baa714f4516288456ceaba/pybind11-2.13.6.tar.gz", hash = "sha256:ba6af10348c12b24e92fa086b39cfba0eff619b61ac77c406167d813b096d39a", size = 218403 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/2f/0f24b288e2ce56f51c920137620b4434a38fd80583dbbe24fc2a1656c388/pybind11-2.13.6-py3-none-any.whl", hash = "sha256:237c41e29157b962835d356b370ededd57594a26d5894a795960f0047cb5caf5", size = 243282 },
-]
-
-[[package]]
 name = "pycparser"
 version = "2.22"
 source = { registry = "https://pypi.org/simple" }
@@ -1264,14 +1255,11 @@ wheels = [
 
 [[package]]
 name = "pywanda"
-version = "4.6.0"
+version = "4.7.0a2"
 source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pybind11" },
-]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/fb/7463cd1858cfdfd30a44b1f362e13553bd805a22f7ad2ec1693589ff3f3b/pywanda-4.6.0-cp310-cp310-win_amd64.whl", hash = "sha256:d14621ae32483297d255a1133656b0d0e02ccf9a3b5742067a5cd1e28a63fb03", size = 9256542 },
-    { url = "https://files.pythonhosted.org/packages/2c/17/471b761fcf94706f6b2fe069022233dc15dd75f033aaefeb2b776d3eec1f/pywanda-4.6.0-cp39-cp39-win_amd64.whl", hash = "sha256:6b0996dec872d9ced8fa4b7b35bd32db3210cae4288918e91efe9394fb4a7d57", size = 9246922 },
+    { url = "https://files.pythonhosted.org/packages/21/71/94524074c7d387316122398a98beebae7f4e374eb764157da449a0f7cf2e/pywanda-4.7.0a2-cp310-cp310-win_amd64.whl", hash = "sha256:c6c555798f8413a97919b964aedbeda20c8434ee38719fddd4be26e7555244ee", size = 7965012 },
+    { url = "https://files.pythonhosted.org/packages/d2/8b/4d69c63f897a5633c391d69a0263d4fbd1bc0c7999c6f4a5bc42b9b2bae5/pywanda-4.7.0a2-cp39-cp39-win_amd64.whl", hash = "sha256:f1e0984b3cf2d1c90065e37d30292779c805986934c0814ac32ab6235fffb34f", size = 7956454 },
 ]
 
 [[package]]
@@ -1478,7 +1466,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.0.2" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
-    { name = "pywanda", specifier = ">=4.6.0" },
+    { name = "pywanda", specifier = "==4.7.0a2" },
 ]
 
 [package.metadata.requires-dev]

@@ -6,12 +6,12 @@ import shutil
 from dataclasses import dataclass
 import pywanda
 import os
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
-load_dotenv()
+# load_dotenv()
 # ! DONT TOUCH
 # cwd =  r'C:\Users\juan.guerrero\Downloads\wanda\Current Model\MODEL 22_02_2024\Transient\wandalib'
-wanda_bin = os.getenv('WANDA_BIN') 
+# wanda_bin = os.getenv('WANDA_BIN') 
 # print(wanda_bin)
 # wanda_name = r'WANDA_MODEL.wdi'
 # wanda_file = os.path.join(cwd, wanda_name)
@@ -139,45 +139,80 @@ def get_node_pressure_steady(wanda_model, node):
     node_pressure = node.get_property("Pressure").get_scalar_float() / 100000
     return node_pressure
 
+# UPDATED
     
-    
-def get_pressure_series(wanda_model, pipes, downsampling_factor=1):
-    len_steps = []
-    pressure_steady_values = []
-    pressure_max_values = []
-    pressure_min_values = []
-    for pipe in pipes:
-        component = wanda_model.get_component(pipe)
+def get_transient_pressure_df(wanda_model, pipes, downsampling_factor=1, print_messages = True, is_returning_series = False):
+    """
+    Genera series de presión para tuberías en un modelo Wanda.
 
-        pressure_pipe = component.get_property("Pressure")
-        series_pipe = np.array(pressure_pipe.get_series_pipe()) /100000
+    Args:
+        wanda_model: Modelo Wanda que contiene los componentes de las tuberías.
+        pipes (list): Lista de nombres de tuberías a procesar.
+        downsampling_factor (int): Factor de muestreo para reducir el tamaño de las series. 
+                                   El valor por defecto es 1 (sin reducción).
+        print_messages (Bool): Printea los valores máximos y mínimos de presión en la tubería en el código
+        is_returning_serie (Bool): Devuelve los valores de presion tres series de pandas en lugar de dataframe
+
+    Returns:
+        tuple: Series de presión estacionaria, mínima y máxima, como pandas.Series.
+    """
+    # time_steps = wanda_model.get_time_steps()
+    length_steps = []
+    steady_pressures = []
+    max_pressures = []
+    min_pressures = []
+    for pipe in pipes:
         
-        steady = series_pipe[:, 0]
-        pressure_steady_values.append(steady)
-        pressure_max_values.append(np.array(pressure_pipe.get_extr_max_pipe())/100000)
-        pressure_min_values.append(np.array(pressure_pipe.get_extr_min_pipe())/100000)
-        profile_x = component.get_property("Profile").get_table().get_float_column("X-distance")
-        len_steps.append(np.linspace(profile_x[0], profile_x[-1], len(series_pipe)))
-        print("For pipeline ", component.get_name(), "the minimum pressure is: ", min(pressure_pipe.get_extr_min_pipe())/100000)
-        print("For pipeline ", component.get_name(), "the maximum pressure is: ", max(pressure_pipe.get_extr_max_pipe())/100000)
+        component = wanda_model.get_component(pipe)
+        pressure_data = component.get_property("Pressure")
+        profile_data = component.get_property("Profile").get_table().get_float_column("X-distance")
+
+        pressure_series = np.array(pressure_data.get_series_pipe()) /100000
+        steady_pressures.append(pressure_series[:, 0])
+        
+        max_pressures.append(np.array(pressure_data.get_extr_max_pipe()) / 100000)
+        min_pressures.append(np.array(pressure_data.get_extr_min_pipe()) / 100000)
+        
+        length_steps.append(np.linspace(profile_data[0], profile_data[-1], len(pressure_series)))
+        
+        min_pressure = min(pressure_data.get_extr_min_pipe()) / 100000
+        max_pressure = max(pressure_data.get_extr_max_pipe()) / 100000
+        if print_messages:
+            print(f"For pipeline '{component.get_name()}', min pressure: {min_pressure} bar, max pressure: {max_pressure} bar")
 
     # Convert lists to numpy arrays
-    pressure_steady_values = np.concatenate(pressure_steady_values)
-    pressure_max_values = np.concatenate(pressure_max_values)
-    pressure_min_values = np.concatenate(pressure_min_values)
-    len_steps = np.concatenate(len_steps)
+    steady_pressures = np.concatenate(steady_pressures)
+    max_pressures = np.concatenate(max_pressures)
+    min_pressures = np.concatenate(min_pressures)
+    length_steps = np.concatenate(length_steps)
     
-    # Create pandas Series
-    steady = pd.Series(pressure_steady_values, index=len_steps)
-    min_pressure = pd.Series(pressure_min_values, index=len_steps)
-    max_pressure = pd.Series(pressure_max_values, index=len_steps)
+    if downsampling_factor > 1:
+        steady_pressures = steady_pressures[::downsampling_factor]
+        max_pressures = max_pressures[::downsampling_factor]
+        min_pressures = min_pressures[::downsampling_factor]
+        length_steps = length_steps[::downsampling_factor]
+        
+    if is_returning_series:
+        steady_series = pd.Series(steady_pressures, index=length_steps)
+        max_series = pd.Series(max_pressures, index=length_steps)
+        min_series = pd.Series(min_pressures, index=length_steps)
+        
+        return steady_series, min_series, max_series
     
-    if downsampling_factor != 1:
-        steady = steady[::downsampling_factor]
-        min_pressure = min_pressure[::downsampling_factor]
-        max_pressure = max_pressure[::downsampling_factor]
+    results_dic = {
+        'Steady Pressure': steady_pressures,
+        'Maximum Pressure': max_pressures,
+        'Minimum Pressure': min_pressures,
+    }
     
-    return steady, min_pressure, max_pressure
+    results_data = pd.DataFrame(results_dic, index=length_steps)
+    results_data.index.name = 'Distance (m)'
+    
+    
+    return results_data
+
+def graph_transient_pressures():
+    return 0
 
 def get_surge_vessel_serie(wanda_model, sv):
     time_steps = wanda_model.get_time_steps()
