@@ -208,6 +208,76 @@ def get_transient_pressure_df(wanda_model, pipes, downsampling_factor=1, print_m
     results_data = pd.DataFrame(results_dic, index=length_steps)
     results_data.index.name = 'Distance (m)'
     
+    return results_data
+
+# TODO PENDIENTE
+
+def get_steady_pipe_results(wanda_model, pipes, downsampling_factor=1, print_messages = True, is_returning_series = False):
+    """
+    Genera series de presión para tuberías en un modelo Wanda.
+
+    Args:
+        wanda_model: Modelo Wanda que contiene los componentes de las tuberías.
+        pipes (list): Lista de nombres de tuberías a procesar.
+        downsampling_factor (int): Factor de muestreo para reducir el tamaño de las series. 
+                                   El valor por defecto es 1 (sin reducción).
+        print_messages (Bool): Printea los valores máximos y mínimos de presión en la tubería en el código
+        is_returning_serie (Bool): Devuelve los valores de presion tres series de pandas en lugar de dataframe
+
+    Returns:
+        tuple: Series de presión estacionaria, mínima y máxima, como pandas.Series.
+    """
+    # time_steps = wanda_model.get_time_steps()
+    length_steps = []
+    steady_pressures = []
+    max_pressures = []
+    min_pressures = []
+    for pipe in pipes:
+        
+        component = wanda_model.get_component(pipe)
+        pressure_data = component.get_property("Pressure")
+        profile_data = component.get_property("Profile").get_table().get_float_column("X-distance")
+
+        pressure_series = np.array(pressure_data.get_series_pipe()) /100000
+        steady_pressures.append(pressure_series[:, 0])
+        
+        max_pressures.append(np.array(pressure_data.get_extr_max_pipe()) / 100000)
+        min_pressures.append(np.array(pressure_data.get_extr_min_pipe()) / 100000)
+        
+        length_steps.append(np.linspace(profile_data[0], profile_data[-1], len(pressure_series)))
+        
+        min_pressure = min(pressure_data.get_extr_min_pipe()) / 100000
+        max_pressure = max(pressure_data.get_extr_max_pipe()) / 100000
+        if print_messages:
+            print(f"For pipeline '{component.get_name()}', min pressure: {min_pressure} bar, max pressure: {max_pressure} bar")
+
+    # Convert lists to numpy arrays
+    steady_pressures = np.concatenate(steady_pressures)
+    max_pressures = np.concatenate(max_pressures)
+    min_pressures = np.concatenate(min_pressures)
+    length_steps = np.concatenate(length_steps)
+    
+    if downsampling_factor > 1:
+        steady_pressures = steady_pressures[::downsampling_factor]
+        max_pressures = max_pressures[::downsampling_factor]
+        min_pressures = min_pressures[::downsampling_factor]
+        length_steps = length_steps[::downsampling_factor]
+        
+    if is_returning_series:
+        steady_series = pd.Series(steady_pressures, index=length_steps)
+        max_series = pd.Series(max_pressures, index=length_steps)
+        min_series = pd.Series(min_pressures, index=length_steps)
+        
+        return steady_series, min_series, max_series
+    
+    results_dic = {
+        'Steady Pressure': steady_pressures,
+        'Maximum Pressure': max_pressures,
+        'Minimum Pressure': min_pressures,
+    }
+    
+    results_data = pd.DataFrame(results_dic, index=length_steps)
+    results_data.index.name = 'Distance (m)'
     
     return results_data
 
@@ -280,146 +350,92 @@ def get_pipe_pressure_graphs(wanda_model, pipes, downsampling_factor = 1):
     plt.legend()
     plt.show()
     
-def get_pipe_head_steady(wanda_model, pipes, downsampling_factor = 1, isRelative = False):
+
+
+def get_pipe_head_steady(wanda_model, pipes, downsampling_factor=1, is_relative=False):
+    """
+    Calculate and plot the steady-state head profile for a pipeline system.
+
+    Args:
+        wanda_model: The WANDA model object.
+        pipes (list): List of pipe names to analyze.
+        downsampling_factor (int, optional): Factor to downsample the data. Defaults to 1.
+        is_relative (bool, optional): If True, treats pipe distances as relative. Defaults to False.
+
+    Returns:
+        list: A list containing the matplotlib figure and axis objects for the plot.
+    """
+    # Initialize lists to store profile and head data
     profile_x_values = []
     profile_y_values = []
-    len_steps = []
     head_steady_values = []
-    if isRelative == True:
-        last_x = 0
-        for pipe in pipes:
-            component = wanda_model.get_component(pipe)
-            data = component.get_property("Profile").get_table().get_float_data()
-            profile_x = np.array(data[0])
-            profile_y = np.array(data[1])
-            print(profile_x)
-            print(profile_y)
-
-            # For the first pipe, initialize the arrays
-            if pipe == "PIPE P1":
-                x_distance = profile_x
-                y_distance = profile_y
-            else:
-                # Extend x and y arrays for subsequent pipes (skip the first point to avoid overlap)
-                x_distance = np.concatenate([x_distance, profile_x[1:] + last_x])
-                y_distance = np.concatenate([y_distance, profile_y[1:]])
-            last_x = x_distance[-1]
-            pressure_pipe = component.get_property("Head")
-            series_pipe = np.array(pressure_pipe.get_series_pipe())
-            
-            steady = series_pipe[:, 0]
-            head_steady_values.append(steady)
-            
-            len_steps.append(np.linspace(profile_x[0], profile_x[-1], len(series_pipe)))
-    else:
-        for pipe in pipes:
-            component = wanda_model.get_component(pipe)
-            profile_x = component.get_property("Profile").get_table().get_float_column("X-distance")
-            profile_y = component.get_property("Profile").get_table().get_float_column("Height")
-            
-            profile_x_values.extend(profile_x)
-            profile_y_values.extend(profile_y)
-            
-            pressure_pipe = component.get_property("Head")
-            series_pipe = np.array(pressure_pipe.get_series_pipe())
-            
-            steady = series_pipe[:, 0]
-            head_steady_values.append(steady)
-            
-            len_steps.append(np.linspace(profile_x[0], profile_x[-1], len(series_pipe)))
-            
-            # print("For pipeline ", component.get_name(), "the minimum head is: ", min(pressure_pipe.get_extr_min_pipe()))
-            # print("For pipeline ", component.get_name(), "the maximum head is: ", min(pressure_pipe.get_extr_max_pipe()))
-
-    # Convert lists to numpy arrays
-    head_steady_values = np.concatenate(head_steady_values)
-    len_steps = np.concatenate(len_steps)
-    
-    if downsampling_factor != 1:
-        head_steady_values = np.concatenate(head_steady_values)
-        len_steps = np.concatenate(len_steps)
-    
-    # Create pandas Series
-    df = pd.Series(head_steady_values, index=len_steps)
-    profile = pd.Series(profile_y_values, index=profile_x_values)
-    fig, bx = plt.subplots()
-    bx.plot(profile, label="Profile", color="green")
-    # print(df.keys()) 
-    # print(df.columns)
-    bx.plot(df, label= "Steady State head", color="orange")
-    bx.set(xlim=(0, profile_x[-1]))
-    # Add vertical lines
-    plt.title("Pipeline Head")
-    plt.xlabel("Distance [m]")
-    plt.ylabel("Head [m]")
-    plt.grid()
-    plt.legend()
-    # plt.show() 
-    
-    return [fig, bx]
+    length_steps = []
+    last_x = 0 
     
     
-def get_pipe_head_graphs(wanda_model, pipes, downsampling_factor = 1):
-    profile_x_values = []
-    profile_y_values = []
-    len_steps = []
-    head_steady_values = []
-    head_max_values = []
-    head_min_values = []
-
     for pipe in pipes:
         component = wanda_model.get_component(pipe)
-        profile_x = component.get_property("Profile").get_table().get_float_column("X-distance")
-        profile_y = component.get_property("Profile").get_table().get_float_column("Height")
+        profile_data = component.get_property("Profile").get_table().get_float_data()
+        profile_x = np.array(profile_data[0])  # X-distance data
+        profile_y = np.array(profile_data[1])  # Height data
         
-        profile_x_values.extend(profile_x)
-        profile_y_values.extend(profile_y)
-        
+        # Get steady-state head data
         pressure_pipe = component.get_property("Head")
         series_pipe = np.array(pressure_pipe.get_series_pipe())
-        
         steady = series_pipe[:, 0]
+        
+        if is_relative:
+            # For the first pipe, initialize the arrays
+            if pipe == pipes[0]:
+                profile_x_values = profile_x
+                profile_y_values = profile_y
+            else:
+                # Extend x and y arrays for subsequent pipes (skip the first point to avoid overlap)
+                updated_distance = profile_x[1:] + last_x
+                profile_x_values = np.concatenate([profile_x_values, updated_distance])
+                profile_y_values = np.concatenate([profile_y_values, profile_y[1:]])
+            steps = np.linspace(profile_x[0], profile_x[-1], len(steady)) + last_x
+            last_x = profile_x_values[-1]  # Update the last x-distance
+        else:
+            profile_x_values.extend(profile_x)
+            profile_y_values.extend(profile_y)
+            steps = np.linspace(profile_x[0], profile_x[-1], len(steady))
+
+        length_steps = np.concatenate([length_steps, steps])
         head_steady_values.append(steady)
-        head_max_values.append(np.array(pressure_pipe.get_extr_max_pipe()))
-        head_min_values.append(np.array(pressure_pipe.get_extr_min_pipe()))
-        
-        len_steps.append(np.linspace(profile_x[0], profile_x[-1], len(series_pipe)))
-        
-        # print("For pipeline ", component.get_name(), "the minimum head is: ", min(pressure_pipe.get_extr_min_pipe()))
-        # print("For pipeline ", component.get_name(), "the maximum head is: ", min(pressure_pipe.get_extr_max_pipe()))
 
     # Convert lists to numpy arrays
     head_steady_values = np.concatenate(head_steady_values)
-    head_max_values = np.concatenate(head_max_values)
-    head_min_values = np.concatenate(head_min_values)
-    len_steps = np.concatenate(len_steps)
-    
+    profile_x_values = np.array(profile_x_values)
+
+    # Downsample data if required
     if downsampling_factor != 1:
         head_steady_values = head_steady_values[::downsampling_factor]
-        head_max_values = head_max_values[::downsampling_factor]
-        head_min_values = head_min_values[::downsampling_factor]
-        len_steps = len_steps[::downsampling_factor]
-    
-    # Create pandas Series
-    df = pd.Series(head_steady_values, index=len_steps)
+        profile_x_values = profile_x_values[::downsampling_factor]
+
+    # Create pandas Series for plotting
+    steady_curve = pd.Series(head_steady_values, index=length_steps)
     profile = pd.Series(profile_y_values, index=profile_x_values)
-    min_head = pd.Series(head_min_values, index=len_steps)
-    max_head = pd.Series(head_max_values, index=len_steps)
+    
+    # Plot the profile and steady-state head
+
+    return steady_curve, profile
+    
+    
+def get_pipe_head_graphs(steady_curve, profile):
     fig, bx = plt.subplots()
     bx.plot(profile, label="Profile", color="green")
-    # print(df.keys()) 
-    # print(df.columns)
-    bx.plot(df, label= "Steady State head", color="orange")
-    bx.plot(max_head, label="Maximum head", color="red", linestyle="dashdot")
-    bx.plot(min_head, label="Minimum head", color="blue", linestyle="dashdot")
-    bx.set(xlim=(0, profile_x[-1]))
-    # Add vertical lines
+    bx.plot(steady_curve, label="Steady State Head", color="orange")
+    bx.set(xlim=(0, profile.index[-1]))
+
+    # Add plot details
     plt.title("Pipeline Head")
     plt.xlabel("Distance [m]")
     plt.ylabel("Head [m]")
     plt.grid()
-    plt.legend()
-    plt.show() 
+    plt.legend()    
+    # plt.show() 
+    return [fig, bx]
     
 def get_surge_vessels_info(wanda_model, surge_vessels):
     fig_num = 0
