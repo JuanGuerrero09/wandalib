@@ -3,6 +3,9 @@ name = "wandalib"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
+authors = [
+    { name = "Juan David", email = "juanguerrero09mc@gmail.com" }
+]
 requires-python = ">=3.9"
 dependencies = [
     "matplotlib>=3.9.4",
@@ -19,3 +22,7 @@ dependencies = [
 dev = [
     "ipykernel>=6.29.5",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
