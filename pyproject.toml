@@ -10,6 +10,9 @@ dependencies = [
     "pandas>=2.2.3",
     "python-dotenv>=1.0.1",
     "pywanda==4.7.0a2",
+    "setuptools>=75.8.0",
+    "twine>=6.1.0",
+    "wheel>=0.45.1",
 ]
 
 [dependency-groups]
