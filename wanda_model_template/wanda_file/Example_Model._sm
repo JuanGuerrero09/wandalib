@@ -1,0 +1,67 @@
+WANDA STEADY    version 4.7.0.44db61_x86
+
+This file contains the log of the computation process,
+including all component messages
+
+
+STEADY    started at  11:32:37  05-05-2025
+
+( I )  INFORMATION       Reading hydraulic data Physical-component input properties
+( I )  INFORMATION       Reading hydraulic system
+( I )  INFORMATION       Interpreting hydraulic system
+( I )  INFORMATION       Reading hydraulic data Physical-node      input properties
+At   0.0000     s PUMP     P1                        Pump specific speed =  24.6
+At   0.0000     s PUMP     P2                        Pump specific speed =  24.6
+At   0.0000     s VENT     V1                        Starts in closed phase
+At   0.0000     s VENT     V2                        Starts in closed phase
+At   0.0000     s VENT     V5                        Starts in closed phase
+At   0.0000     s VENT     V3                        Starts in closed phase
+At   0.0000     s VENT     V4                        Starts in closed phase
+At   0.0000     s VALVE    FARM                      Starts in open phase
+At   0.0000     s VALVE    MOMRAH                    Starts in open phase
+( I )  INFORMATION       Hydraulic steady state computation
+ Number of H-iterations:   8
+( I )  INFORMATION       Steady state solution found
+( I )  INFORMATION       Hydraulic steady state computation
+ Number of H-iterations:   5
+( I )  INFORMATION       Steady state solution found
+At   0.0000     s PuCV     F2                        Starts in open phase
+At   0.0000     s PuCV     F2                        Position is 0.1968 [-]
+At   0.0000     s FCV      F1                        Starts in open phase
+At   0.0000     s FCV      F1                        Position is 0.2268 [-]
+At   0.0000     s PuCV     F1                        Starts in open phase
+At   0.0000     s PuCV     F1                        Position is 0.1458 [-]
+At   0.0000     s CHECKV   C2                        Starts in open phase
+At   0.0000     s CHECKV   C1                        Starts in open phase
+At   0.0000     s T-JUNC   T1                        Branch flow dividing
+                                                                                
+P O O L   R E P O R T                                                           
+======================================                                          
+Pool size:                    50000000                                          
+Maximum number of pool arrays:     200                                          
+Maximum occupied pool size:     135492                                          
+Number of arrays used:              33                                          
+Pool utilisation:               134991                                          
+Free pool space:              49864507                                          
+ 
+                                                                                
+H Y D R A U L I C   S Y S T E M   S T A T I S T I C S                           
+=====================================================                           
+Number of pipes components:                 8
+Number of supplier type components:         8
+Number of fall type components:             9
+Total number of hydraulic components:      26
+Number of H-nodes:                         19
+Number of Control components:               0
+                                                                                
+M E S S A G E   R E P O R T                                                     
+====================================================                            
+Number of informations:               26
+Number of warnings:                    0
+Number of errors:                      0
+Number of severe errors:               0
+Number of terminating errors:          0
+Total number of messages:             26
+
+
+STEADY    finished at  11:32:37  05-05-2025

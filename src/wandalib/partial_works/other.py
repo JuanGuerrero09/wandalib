@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from utils import AllowedProperties
+from wandalib.utils import AllowedProperties
 
 
 def get_max_min_prv_pipes(wanda_model, elements):
