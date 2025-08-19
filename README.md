@@ -16,8 +16,4 @@ Contributions, ideas, and bug reports are welcome.
 
 The library uses **UV**, an extremely fast Python package and project manager written in **Rust**, offering a lightweight and efficient alternative to tools like Anaconda (which requires an enterprise license).  
 
-To run and verify the installation:  
-
-```bash
-uv run test/test.py
-```
+To run and verify the installation check and follow the instructions from the [english](https://github.com/JuanGuerrero09/wandalib/blob/main/wanda_model_template_example/template_en.ipynb) and [spanish](https://github.com/JuanGuerrero09/wandalib/blob/main/wanda_model_template_example/template_es.ipynb) templates
