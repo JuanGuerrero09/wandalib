@@ -4,7 +4,7 @@ This file contains the log of the computation process,
 including all component messages
 
 
-STEADY    started at  11:32:37  05-05-2025
+STEADY    started at  15:59:01  19-08-2025
 
 ( I )  INFORMATION       Reading hydraulic data Physical-component input properties
 ( I )  INFORMATION       Reading hydraulic system
@@ -17,8 +17,8 @@ At   0.0000     s VENT     V2                        Starts in closed phase
 At   0.0000     s VENT     V5                        Starts in closed phase
 At   0.0000     s VENT     V3                        Starts in closed phase
 At   0.0000     s VENT     V4                        Starts in closed phase
-At   0.0000     s VALVE    FARM                      Starts in open phase
-At   0.0000     s VALVE    MOMRAH                    Starts in open phase
+At   0.0000     s VALVE    STANDARD 1                Starts in open phase
+At   0.0000     s VALVE    STANDARD 2                Starts in open phase
 ( I )  INFORMATION       Hydraulic steady state computation
  Number of H-iterations:   8
 ( I )  INFORMATION       Steady state solution found
@@ -64,4 +64,4 @@ Number of terminating errors:          0
 Total number of messages:             26
 
 
-STEADY    finished at  11:32:37  05-05-2025
+STEADY    finished at  15:59:02  19-08-2025

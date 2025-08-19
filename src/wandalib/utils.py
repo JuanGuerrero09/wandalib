@@ -19,16 +19,16 @@ class Scenario:
     parameters: dict
     
 # Example of Scenario
-#     scenario_name="CLOSURE_MOMRAH_VALVE", 
+#     scenario_name="CLOSURE_VALVE", 
 #     parameters={
-#     "VALVE MOMRAH": {
+#     "VALVE V1": {
 #         "Action table": assign_closing_time(20)
 #     }}
 #     ), 
 #                  Scenario(
 #     scenario_name="CLOSURE_FARM_VALVE", 
 #     parameters={
-#     "VALVE FARM": {
+#     "VALVE V2": {
 #         "Action table": assign_closing_time(64)
 #     }}
 #     )
@@ -55,11 +55,11 @@ def get_components_from_type(all_components: dict, type:str) -> list[str]:
     return all_components[type]
 
 def show_components_from_type_str(filter: str, all_components: dict) -> str:
-    list = get_components_from_type(all_components, filter)
-    str = ""
-    for component in list[filter]:
-        str += filter + " " + component + "\n"
-    return str
+    components_list = get_components_from_type(all_components, filter)
+    result_str = ""
+    for component in components_list:
+        result_str += filter + " " + component + "\n"
+    return result_str
 
 #################################
     
@@ -69,7 +69,7 @@ def create_wanda_model(wanda_file: str, wanda_bin: str) -> tuple[pywanda.WandaMo
     return wanda_model, wanda_name
 
 
-def check_if_element_exist(component: str, all_elements: list) -> bool:
+def check_if_element_exist(component: str, all_elements: dict[str, list[str]]) -> bool:
     splited_str = component.split()
     component_type = splited_str[0]
     component_name = ' '.join(splited_str[1:])
@@ -85,7 +85,8 @@ def create_scenarios(wanda_file: str, scenarios: list[Scenario], wanda_bin: str,
         results_dir = "steady_results"
     cwd = os.path.dirname(wanda_file)
     try:
-        os.mkdir(cwd + results_dir)
+        folder_path = os.path.join(cwd, results_dir)
+        os.mkdir(folder_path)
         print(f"Directory '{results_dir}' created successfully.")
     except FileExistsError:
         print(f"Directory '{results_dir}' already exists.")
@@ -105,6 +106,7 @@ def create_scenarios(wanda_file: str, scenarios: list[Scenario], wanda_bin: str,
         print(scenario_skeleton_path)
         shutil.copy(wanda_file, scenario_path)
         shutil.copy(mother_case_skeleton, scenario_skeleton_path)
+        print(f"Scenario %s created in path %s from wandabin %s" % (scenario.scenario_name, scenario_path, wanda_bin))
         new_wanda_model = pywanda.WandaModel(scenario_path, wanda_bin)
         for parameter in scenario.parameters:
             # TODO parameterType = parameter.split()[0]
@@ -131,6 +133,8 @@ def create_scenarios(wanda_file: str, scenarios: list[Scenario], wanda_bin: str,
         print(f"Scenario %s created in path %s" % (scenario.scenario_name, cwd))        
         print("Running scenario...")
         if isUnsteady == True:
+            print(new_wanda_model)
+            new_wanda_model.run_steady()
             new_wanda_model.run_unsteady()
         else:        
             new_wanda_model.run_steady()
